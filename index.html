@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>RETRO-CANVAS-ARCADE — 22 Game Mini Arcade</title>
+<meta name="description" content="A 22-game offline retro arcade built with pure HTML5 Canvas, Web Audio synthesis and vanilla JavaScript. No servers, no downloads, no dependencies.">
+<meta name="theme-color" content="#05060a">
+<meta name="color-scheme" content="dark">
+
+<!-- All paths are relative so the hub runs identically at the domain root or
+     under a /repository-name/ GitHub Pages subdirectory. -->
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="stylesheet" href="./css/arcade.css">
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="RETRO ARCADE">
+</head>
+<body class="crt-scanlines crt-glow">
+
+<!-- ══════════════════════════════════════════════════════ BOOT SEQUENCE ══ -->
+<div id="boot" class="boot">
+  <div class="boot-inner">
+    <pre class="boot-logo">██████╗ ███████╗████████╗██████╗  ██████╗
+██╔══██╗██╔════╝╚══██╔══╝██╔══██╗██╔═══██╗
+██████╔╝█████╗     ██║   ██████╔╝██║   ██║
+██╔══██╗██╔══╝     ██║   ██╔══██╗██║   ██║
+██║  ██║███████╗   ██║   ██║  ██║╚██████╔╝
+╚═╝  ╚═╝╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝ </pre>
+    <p class="boot-sub">C A N V A S &nbsp; A R C A D E</p>
+    <div class="boot-log" id="boot-log" role="status" aria-live="polite"></div>
+    <button id="boot-start" class="btn btn-primary boot-start" hidden>▶ INSERT COIN</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ LAUNCHER ══ -->
+<main id="launcher" class="launcher" hidden>
+  <header class="hub-header">
+    <div class="hub-title">
+      <h1>RETRO<span class="dash">-</span>CANVAS<span class="dash">-</span>ARCADE</h1>
+      <p class="tagline">22 cabinets · 100% offline · zero dependencies</p>
+    </div>
+    <div class="hub-actions">
+      <button class="btn icon-btn" id="btn-settings" aria-label="Settings" title="Settings">⚙</button>
+      <button class="btn icon-btn" id="btn-fullscreen" aria-label="Fullscreen" title="Fullscreen">⛶</button>
+      <button class="btn icon-btn" id="btn-install" aria-label="Install app" title="Install app" hidden>⇩</button>
+    </div>
+  </header>
+
+  <section class="hub-stats" id="hub-stats"></section>
+
+  <div class="hub-filters">
+    <label class="search-wrap">
+      <span class="sr-only">Search games</span>
+      <input type="search" id="search" placeholder="SEARCH CABINETS…" autocomplete="off" spellcheck="false">
+    </label>
+    <div class="chips" id="categories" role="tablist" aria-label="Categories"></div>
+  </div>
+
+  <div class="game-grid" id="game-grid"></div>
+
+  <footer class="hub-footer">
+    <p>Built with vanilla ES modules, HTML5 Canvas 2D and the Web Audio API.
+       Works offline once loaded — add it to your home screen and play anywhere.</p>
+    <p class="offline-state" id="offline-state"></p>
+  </footer>
+</main>
+
+<!-- ═══════════════════════════════════════════════════════════ ARCADE ══ -->
+<div id="arcade" class="arcade" hidden>
+  <div class="hud" id="hud">
+    <button class="btn hud-btn" id="btn-back" aria-label="Back to hub">◀ HUB</button>
+    <div class="hud-title" id="hud-title">GAME</div>
+    <div class="hud-readout" id="hud-readout"></div>
+    <div class="hud-right">
+      <span class="fps" id="fps" hidden>60 FPS</span>
+      <button class="btn hud-btn" id="btn-restart" aria-label="Restart">↻</button>
+      <button class="btn hud-btn" id="btn-pause" aria-label="Pause">❚❚</button>
+    </div>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="screen" width="480" height="360" aria-label="Game screen"></canvas>
+    <div class="touch-layer" id="touch-layer"></div>
+
+    <!-- Pause -->
+    <div class="overlay" id="overlay-pause" hidden>
+      <div class="panel">
+        <h2>PAUSED</h2>
+        <div class="panel-controls" id="pause-controls"></div>
+        <div class="panel-buttons">
+          <button class="btn btn-primary" id="pause-resume">RESUME</button>
+          <button class="btn" id="pause-restart">RESTART</button>
+          <button class="btn" id="pause-settings">SETTINGS</button>
+          <button class="btn btn-danger" id="pause-quit">QUIT TO HUB</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game over -->
+    <div class="overlay" id="overlay-over" hidden>
+      <div class="panel">
+        <h2 id="over-title">GAME OVER</h2>
+        <div class="score-block">
+          <div class="score-row"><span>SCORE</span><strong id="over-score">0</strong></div>
+          <div class="score-row"><span>BEST</span><strong id="over-best">0</strong></div>
+        </div>
+        <p class="record" id="over-record" hidden>★ NEW HIGH SCORE ★</p>
+        <div class="panel-stats" id="over-stats"></div>
+        <div class="panel-buttons">
+          <button class="btn btn-primary" id="over-again">PLAY AGAIN</button>
+          <button class="btn" id="over-quit">BACK TO HUB</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════ SETTINGS ══ -->
+<div class="overlay overlay-modal" id="overlay-settings" hidden>
+  <div class="panel panel-wide">
+    <h2>SETTINGS</h2>
+
+    <div class="settings-grid">
+      <section>
+        <h3>AUDIO</h3>
+        <label class="row"><span>Master volume</span>
+          <input type="range" id="set-master" min="0" max="1" step="0.05"></label>
+        <label class="row"><span>Sound effects</span>
+          <input type="checkbox" id="set-sfx"></label>
+        <label class="row"><span>Music</span>
+          <input type="checkbox" id="set-music"></label>
+      </section>
+
+      <section>
+        <h3>CRT DISPLAY</h3>
+        <label class="row"><span>Scanlines</span>
+          <input type="checkbox" id="set-scanlines"></label>
+        <label class="row"><span>Phosphor glow</span>
+          <input type="checkbox" id="set-glow"></label>
+        <label class="row"><span>Pixelate</span>
+          <input type="checkbox" id="set-pixelate"></label>
+        <label class="row"><span>FPS counter</span>
+          <input type="checkbox" id="set-fps"></label>
+        <label class="row"><span>Reduce flashing</span>
+          <input type="checkbox" id="set-reduced"></label>
+      </section>
+
+      <section>
+        <h3>CONTROLS</h3>
+        <label class="row"><span>Touch controls</span>
+          <select id="set-touch">
+            <option value="auto">Auto-detect</option>
+            <option value="always">Always show</option>
+            <option value="never">Never show</option>
+          </select></label>
+        <div class="keymap" id="keymap"></div>
+        <button class="btn btn-small" id="keymap-reset">RESET KEYS</button>
+      </section>
+
+      <section>
+        <h3>DATA</h3>
+        <p class="hint" id="data-summary"></p>
+        <button class="btn btn-small btn-danger" id="btn-wipe">ERASE ALL SAVE DATA</button>
+      </section>
+    </div>
+
+    <div class="panel-buttons">
+      <button class="btn btn-primary" id="settings-close">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ GAME DETAILS ══ -->
+<div class="overlay overlay-modal" id="overlay-detail" hidden>
+  <div class="panel panel-wide">
+    <h2 id="detail-title">GAME</h2>
+    <p class="detail-cat" id="detail-cat"></p>
+    <p class="detail-desc" id="detail-desc"></p>
+    <div class="detail-cols">
+      <div>
+        <h3>CONTROLS</h3>
+        <ul class="control-list" id="detail-controls"></ul>
+      </div>
+      <div>
+        <h3>RECORD</h3>
+        <div class="score-row"><span>BEST</span><strong id="detail-best">0</strong></div>
+        <div class="score-row"><span>PLAYS</span><strong id="detail-plays">0</strong></div>
+      </div>
+    </div>
+    <div class="panel-buttons">
+      <button class="btn btn-primary" id="detail-play">▶ PLAY</button>
+      <button class="btn" id="detail-close">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<noscript>
+  <div class="noscript">RETRO-CANVAS-ARCADE needs JavaScript enabled. Every game is
+  rendered client-side with HTML5 Canvas — there is no server to fall back to.</div>
+</noscript>
+
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>

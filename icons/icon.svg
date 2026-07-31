@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Retro Canvas Arcade">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1424"/>
+      <stop offset="1" stop-color="#05060a"/>
+    </linearGradient>
+    <filter id="g" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="64" height="64" rx="12" fill="url(#bg)"/>
+
+  <!-- CRT screen -->
+  <g filter="url(#g)">
+    <rect x="8" y="8" width="48" height="32" rx="3" fill="#0d1322" stroke="#22e7ff" stroke-width="2"/>
+  </g>
+  <g stroke="#22e7ff" stroke-width="0.5" opacity="0.4">
+    <path d="M16 8v32M24 8v32M32 8v32M40 8v32M48 8v32"/>
+    <path d="M8 16h48M8 24h48M8 32h48"/>
+  </g>
+  <g filter="url(#g)">
+    <rect x="19" y="27" width="6" height="5" fill="#8dff4a"/>
+    <circle cx="42" cy="19" r="3.2" fill="#ff3ea5"/>
+  </g>
+
+  <!-- Joystick and buttons -->
+  <g filter="url(#g)">
+    <rect x="16.4" y="46" width="2.2" height="8" fill="#8fa6c4"/>
+    <rect x="11" y="53" width="13" height="4" rx="1.5" fill="#5a6b8c"/>
+    <circle cx="17.5" cy="45" r="4.2" fill="#ff3ea5"/>
+    <circle cx="40" cy="50" r="4" fill="#22e7ff"/>
+    <circle cx="52" cy="50" r="4" fill="#ffd53d"/>
+  </g>
+</svg>

@@ -1,0 +1,12 @@
+# Dev-only smoke-test artefacts
+.smoke-shots/
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Nothing here needs npm — but keep stray installs out of the deploy
+node_modules/
