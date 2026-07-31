@@ -465,79 +465,129 @@ export function create(api) {
     }
   }
 
+  /**
+   * Drawn in batches by obstacle type rather than one save/shadow pair per
+   * obstacle. A shadowed draw call costs a whole extra blur rasterisation, so
+   * collapsing N of them into one path per type is worth several frames a
+   * second once the tunnel gets busy.
+   */
   function drawObstacles(ctx) {
+    const visible = [];
     for (const o of obs) {
       const x = sx(o.x);
       if (x > VIEW_W + 10 || x + o.w < -10) continue;
+      visible.push({ o, x });
+    }
+    if (!visible.length) return;
 
-      if (o.type === 'spike') {
-        ctx.save();
-        ctx.shadowColor = PAL.red;
-        ctx.shadowBlur = 8;
-        ctx.fillStyle = PAL.red;
-        ctx.beginPath();
-        const up = o.surface === 'floor';
-        const base = up ? TUN_BOT : TUN_TOP;
-        const tipD = up ? -o.h : o.h;
-        const step = o.w / o.teeth;
-        for (let i = 0; i < o.teeth; i++) {
-          const bx = x + i * step;
-          ctx.moveTo(bx, base);
-          ctx.lineTo(bx + step, base);
-          ctx.lineTo(bx + step / 2, base + tipD);
-          ctx.closePath();
-        }
-        ctx.fill();
-        ctx.restore();
-      } else if (o.type === 'block') {
-        ctx.save();
-        ctx.fillStyle = '#2a3358';
-        ctx.fillRect(x, o.y, o.w, o.h);
-        ctx.strokeStyle = PAL.orange;
-        ctx.lineWidth = 2;
-        ctx.shadowColor = PAL.orange;
-        ctx.shadowBlur = 8;
-        ctx.strokeRect(x + 1, o.y + 1, o.w - 2, o.h - 2);
-        ctx.restore();
-        ctx.fillStyle = alpha(PAL.orange, 0.22);
-        for (let i = 8; i < o.h - 6; i += 12) ctx.fillRect(x + 4, o.y + i, o.w - 8, 3);
-      } else if (o.type === 'laser') {
-        const ly = laserY(o);
-        ctx.save();
-        ctx.shadowColor = PAL.red;
-        ctx.shadowBlur = 14;
-        ctx.fillStyle = PAL.red;
-        ctx.fillRect(x, ly, o.w, o.h);
-        ctx.fillStyle = alpha(PAL.white, 0.8);
-        ctx.fillRect(x, ly + o.h / 2 - 0.5, o.w, 1);
-        ctx.restore();
-        // Emitter posts riding the sweep.
-        ctx.fillStyle = '#3a4266';
-        ctx.fillRect(x - 3, ly - 3, 4, o.h + 6);
-        ctx.fillRect(x + o.w - 1, ly - 3, 4, o.h + 6);
+    /* Spikes — one path, one shadowed fill. */
+    ctx.save();
+    ctx.shadowColor = PAL.red;
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = PAL.red;
+    ctx.beginPath();
+    let anySpike = false;
+    for (const { o, x } of visible) {
+      if (o.type !== 'spike') continue;
+      anySpike = true;
+      const up = o.surface === 'floor';
+      const base = up ? TUN_BOT : TUN_TOP;
+      const tipD = up ? -o.h : o.h;
+      const step = o.w / o.teeth;
+      for (let i = 0; i < o.teeth; i++) {
+        const bx = x + i * step;
+        ctx.moveTo(bx, base);
+        ctx.lineTo(bx + step, base);
+        ctx.lineTo(bx + step / 2, base + tipD);
+        ctx.closePath();
       }
+    }
+    if (anySpike) ctx.fill();
+    ctx.restore();
+
+    /* Blocks — unshadowed fills, then one shadowed stroke for every outline. */
+    ctx.fillStyle = '#2a3358';
+    for (const { o, x } of visible) {
+      if (o.type === 'block') ctx.fillRect(x, o.y, o.w, o.h);
+    }
+    ctx.save();
+    ctx.strokeStyle = PAL.orange;
+    ctx.lineWidth = 2;
+    ctx.shadowColor = PAL.orange;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    let anyBlock = false;
+    for (const { o, x } of visible) {
+      if (o.type !== 'block') continue;
+      anyBlock = true;
+      ctx.rect(x + 1, o.y + 1, o.w - 2, o.h - 2);
+    }
+    if (anyBlock) ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = alpha(PAL.orange, 0.22);
+    for (const { o, x } of visible) {
+      if (o.type !== 'block') continue;
+      for (let i = 8; i < o.h - 6; i += 12) ctx.fillRect(x + 4, o.y + i, o.w - 8, 3);
+    }
+
+    /* Lasers — one shadowed fill for the beams, then the unshadowed trim. */
+    ctx.save();
+    ctx.shadowColor = PAL.red;
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = PAL.red;
+    ctx.beginPath();
+    let anyLaser = false;
+    for (const { o, x } of visible) {
+      if (o.type !== 'laser') continue;
+      anyLaser = true;
+      ctx.rect(x, laserY(o), o.w, o.h);
+    }
+    if (anyLaser) ctx.fill();
+    ctx.restore();
+
+    for (const { o, x } of visible) {
+      if (o.type !== 'laser') continue;
+      const ly = laserY(o);
+      ctx.fillStyle = alpha(PAL.white, 0.8);
+      ctx.fillRect(x, ly + o.h / 2 - 0.5, o.w, 1);
+      // Emitter posts riding the sweep.
+      ctx.fillStyle = '#3a4266';
+      ctx.fillRect(x - 3, ly - 3, 4, o.h + 6);
+      ctx.fillRect(x + o.w - 1, ly - 3, 4, o.h + 6);
     }
   }
 
+  /** Batched like the obstacles: one shadowed fill for every orb body. */
   function drawOrbs(ctx) {
-    ctx.save();
-    ctx.shadowColor = PAL.yellow;
-    ctx.shadowBlur = 10;
+    const shown = [];
     for (const orb of orbs) {
       if (orb.got) continue;
       const x = sx(orb.x);
       if (x < -10 || x > VIEW_W + 10) continue;
-      const r = orb.r + Math.sin(api.time * 5 + orb.bob) * 0.8;
-      ctx.fillStyle = PAL.yellow;
-      ctx.beginPath();
-      ctx.arc(x, orb.y, r, 0, TAU);
-      ctx.fill();
-      ctx.fillStyle = alpha(PAL.white, 0.85);
-      ctx.beginPath();
-      ctx.arc(x - 1, orb.y - 1, r * 0.4, 0, TAU);
-      ctx.fill();
+      shown.push({ x, y: orb.y, r: orb.r + Math.sin(api.time * 5 + orb.bob) * 0.8 });
     }
+    if (!shown.length) return;
+
+    ctx.save();
+    ctx.shadowColor = PAL.yellow;
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = PAL.yellow;
+    ctx.beginPath();
+    for (const s of shown) {
+      ctx.moveTo(s.x + s.r, s.y);
+      ctx.arc(s.x, s.y, s.r, 0, TAU);
+    }
+    ctx.fill();
     ctx.restore();
+
+    ctx.fillStyle = alpha(PAL.white, 0.85);
+    ctx.beginPath();
+    for (const s of shown) {
+      const hr = s.r * 0.4;
+      ctx.moveTo(s.x - 1 + hr, s.y - 1);
+      ctx.arc(s.x - 1, s.y - 1, hr, 0, TAU);
+    }
+    ctx.fill();
   }
 
   function drawRunner(ctx) {

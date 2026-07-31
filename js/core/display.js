@@ -23,6 +23,12 @@ export class Display {
     this.buffer = document.createElement('canvas');
     this.bctx = this.buffer.getContext('2d', { alpha: false });
 
+    // Quarter-resolution bloom texture. Blurring the full composite is a
+    // fill-rate disaster at retina sizes — downsample first, blur the small
+    // copy, then let the upscale do most of the spreading for free.
+    this.bloom = document.createElement('canvas');
+    this.blctx = this.bloom.getContext('2d', { alpha: false });
+
     this.vw = 480;
     this.vh = 360;
     this.dpr = 1;
@@ -70,7 +76,13 @@ export class Display {
     const cssH = Math.max(1, Math.floor(rect.height));
     // Cap DPR on very dense phone screens: 3x of a full-screen canvas is a lot
     // of fill rate for a 60 fps particle-heavy game.
-    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    let dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    // Hard ceiling on total backing pixels. A 2x tablet in landscape asks for
+    // ~3.3M pixels, which costs more than the visual difference is worth.
+    const BUDGET = 2_600_000;
+    if (cssW * cssH * dpr * dpr > BUDGET) {
+      dpr = Math.max(1, Math.sqrt(BUDGET / (cssW * cssH)));
+    }
 
     this.cssW = cssW;
     this.cssH = cssH;
@@ -100,6 +112,13 @@ export class Display {
       this.buffer.height = bh;
     }
 
+    const glw = Math.max(1, Math.round(bw / 4));
+    const glh = Math.max(1, Math.round(bh / 4));
+    if (this.bloom.width !== glw || this.bloom.height !== glh) {
+      this.bloom.width = glw;
+      this.bloom.height = glh;
+    }
+
     this.screen.imageSmoothingEnabled = !this.pixelate;
   }
 
@@ -116,6 +135,33 @@ export class Display {
 
   /** Composite the buffer to the visible canvas with CRT post-effects. */
   end() {
+    // Bloom is applied to the *buffer*, not the screen. Blending a full-screen
+    // additive pass at retina size costs ~4x more fill than doing it here, and
+    // the result is indistinguishable once it's upscaled.
+    if (this.glow) {
+      const b = this.blctx;
+      b.setTransform(1, 0, 0, 1, 0, 0);
+      b.globalCompositeOperation = 'source-over';
+      b.globalAlpha = 1;
+      b.filter = 'none';
+      b.imageSmoothingEnabled = true;
+      b.drawImage(this.buffer, 0, 0, this.bloom.width, this.bloom.height);
+      if (this._bloomSupported) {
+        b.filter = 'blur(1.5px)';
+        b.drawImage(this.bloom, 0, 0);
+        b.filter = 'none';
+      }
+
+      const c = this.bctx;
+      c.save();
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.globalCompositeOperation = 'lighter';
+      c.globalAlpha = 0.32;
+      c.imageSmoothingEnabled = true;
+      c.drawImage(this.bloom, 0, 0, this.buffer.width, this.buffer.height);
+      c.restore();
+    }
+
     const s = this.screen;
     const dpr = this.dpr;
     s.setTransform(1, 0, 0, 1, 0, 0);
@@ -129,16 +175,6 @@ export class Display {
     const dh = Math.round(this.vh * this.fit * dpr);
 
     s.drawImage(this.buffer, 0, 0, this.buffer.width, this.buffer.height, dx, dy, dw, dh);
-
-    if (this.glow && this._bloomSupported) {
-      s.save();
-      s.globalCompositeOperation = 'lighter';
-      s.globalAlpha = 0.28;
-      s.filter = `blur(${Math.max(2, Math.round(3 * dpr))}px)`;
-      s.drawImage(this.buffer, 0, 0, this.buffer.width, this.buffer.height, dx, dy, dw, dh);
-      s.filter = 'none';
-      s.restore();
-    }
   }
 
   tickFps(dt) {

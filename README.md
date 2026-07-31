@@ -179,8 +179,10 @@ shortcuts that deep-link straight into a cabinet (`./?game=pinball`).
 ## Development
 
 ```bash
-node tools/make-icons.mjs                       # regenerate the PWA icons
-NODE_PATH=$(npm root -g) node tools/smoke.mjs    # headless test of all 22 games
+node tools/make-icons.mjs        # regenerate the PWA icons — needs nothing installed
+
+npm i -D playwright              # the smoke test is the one thing with a dependency
+node tools/smoke.mjs             # headless run of all 22 cabinets
 ```
 
 `smoke.mjs` serves the repo from a `/repository-name/` sub-path — proving the
