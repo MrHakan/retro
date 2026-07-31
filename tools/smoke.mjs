@@ -91,6 +91,9 @@ await page.waitForSelector('#boot-start:not([hidden])', { timeout: 15000 });
 await page.click('#boot-start');
 await page.waitForSelector('#launcher:not([hidden])');
 
+await page.waitForTimeout(300);
+await page.screenshot({ path: join(SHOT_DIR, '_launcher.png'), fullPage: true });
+
 const games = await page.evaluate(() =>
   window.ARCADE.games.map((g) => ({ id: g.meta.id, title: g.meta.title, view: g.meta.view })));
 

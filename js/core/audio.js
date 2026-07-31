@@ -595,7 +595,8 @@ export class AudioEngine {
 
     const token = Symbol('track');
     const timer = setInterval(schedule, 40);
-    schedule();
+    // Register before the priming call — `schedule` bails out unless the
+    // active track's token matches, so the first pass would otherwise no-op.
     this._track = {
       token,
       stop: () => clearInterval(timer),
@@ -603,6 +604,7 @@ export class AudioEngine {
       stepDur,
       bpm,
     };
+    schedule();
 
     return {
       bpm,

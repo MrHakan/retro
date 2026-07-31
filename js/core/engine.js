@@ -82,6 +82,7 @@ export class Engine {
     this.input.setTouchLayout(meta.touch || null);
     this.input.releaseAll();
     this.input.clearEdges();
+    this.input.enabled = true;
 
     this.game = mod.create(this._makeApi());
     this.state = STATE.PLAYING;
@@ -158,6 +159,7 @@ export class Engine {
 
   unload() {
     this.stop();
+    this.input.enabled = false;
     if (this.game && this.game.destroy) {
       try { this.game.destroy(); } catch (err) { console.warn('destroy() failed', err); }
     }
@@ -279,6 +281,9 @@ export class Engine {
     this.score = finalScore;
     const record = this.storage.submitScore(this.meta.id, finalScore);
     this.input.releaseAll();
+    // Hand the keyboard back to the shell so the overlay's buttons are
+    // reachable with Tab/Space/Enter.
+    this.input.enabled = false;
     this.audio.stopTrack();
     this.audio.sfx(opts.win ? 'victory' : 'gameover');
     if (this.onGameOver) {
@@ -296,6 +301,7 @@ export class Engine {
   /* -------------------------------------------------------------- input  */
 
   _onInput(e) {
+    if (!this.game) return;
     if (e.type === 'press') {
       if (e.action === 'pause') {
         this.togglePause();

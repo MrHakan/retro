@@ -25,6 +25,11 @@
 
 * { box-sizing: border-box; }
 
+/* The shell toggles visibility with the `hidden` attribute, but a `display`
+   declaration on a class beats the UA sheet's `[hidden] { display: none }`.
+   Without this, "hidden" overlays stay laid out and keep swallowing clicks. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;

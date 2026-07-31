@@ -37,7 +37,8 @@ export class InputManager {
     this.stick = { x: 0, y: 0, active: false };
     this.pointer = { x: 0, y: 0, down: false, id: null, inside: false };
     this.onEvent = null;
-    this.enabled = true;
+    // Enabled only while a game is mounted; the launcher keeps its own keys.
+    this.enabled = false;
     this.mode = 'auto';
     this._layout = null;
 
@@ -62,7 +63,8 @@ export class InputManager {
       el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
 
     this._onKeyDown = (e) => {
-      if (!this.enabled || isEditable(document.activeElement)) return;
+      if (isEditable(document.activeElement)) return;
+      // Rebinding must work from the settings modal, where `enabled` is false.
       if (this.captureNextKey) {
         e.preventDefault();
         const cb = this.captureNextKey;
@@ -70,6 +72,9 @@ export class InputManager {
         cb(e.code);
         return;
       }
+      // Outside a game the shell owns the keyboard — swallowing arrows here
+      // would stop the launcher from scrolling.
+      if (!this.enabled) return;
       const action = this._codeToAction[e.code];
       if (action) {
         // Arrows/space scroll the page; games need them.

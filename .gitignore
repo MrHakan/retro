@@ -9,4 +9,5 @@ Thumbs.db
 .vscode/
 
 # Nothing here needs npm — but keep stray installs out of the deploy
+node_modules
 node_modules/
