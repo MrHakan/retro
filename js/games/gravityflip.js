@@ -125,7 +125,6 @@ export function create(api) {
   let camY, camRoll, flash, orbCount, flips;
   let dead, deadT, deathMsg, statusT, scoreT, milestone;
 
-  const surfaceY = (s) => (s === 'floor' ? TUN_BOT : TUN_TOP);
   /** Top edge of the body-height lane hugging a surface. */
   const laneTop = (s) => (s === 'floor' ? TUN_BOT - PH : TUN_TOP);
   const other = (s) => (s === 'floor' ? 'ceil' : 'floor');

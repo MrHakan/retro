@@ -135,7 +135,7 @@ export function create(api) {
   /* ------------------------------------------------------------- state */
   let camX;                 // world x of the left screen edge
   let speed, distance, shards, meters;
-  let alive, deathCause;
+  let alive;
 
   let py, pvy;              // feet y, vertical velocity
   let onGround, coyote, buffer, jumpsLeft, holding;
@@ -408,7 +408,6 @@ export function create(api) {
   function die(cause) {
     if (!alive) return;
     alive = false;
-    deathCause = cause;
     api.shakeScreen(13, 5);
     api.sfx('explosion');
     api.vibrate(140);
@@ -626,7 +625,6 @@ export function create(api) {
       meters = 0;
       shards = 0;
       alive = true;
-      deathCause = '';
 
       plats = [{ x: -60, w: 460, y: 186 }];
       obstacles = [];

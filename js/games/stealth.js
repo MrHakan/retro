@@ -23,7 +23,6 @@ const PLAYER_R = 5.5;
 const RUN_SPEED = 82;
 const SNEAK_SPEED = 38;
 const RUN_NOISE = 54;       // radius at which running is audible
-const SNEAK_NOISE = 0;
 const DETECT_RATE = 1.55;   // meter fill per second, fully lit
 const DETECT_DECAY = 0.5;
 const HACK_TIME = 2.2;

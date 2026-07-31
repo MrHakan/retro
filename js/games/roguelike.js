@@ -132,7 +132,7 @@ export function create(api) {
   let depth, turns, alive;
   let log, banner, hitFx;
   let repeatTimer, stepTimer;
-  let killCount, floorsCleared;
+  let killCount;
 
   const idx = (x, y) => y * MAP_W + x;
   const inBounds = (x, y) => x >= 0 && y >= 0 && x < MAP_W && y < MAP_H;
@@ -583,7 +583,6 @@ export function create(api) {
 
   function descend() {
     depth++;
-    floorsCleared++;
     api.sfx('levelup');
     banner = { text: 'DEPTH ' + depth, color: PAL.cyan, life: 1.8 };
     say(`You descend to floor ${depth}. The air grows colder.`, PAL.cyan);
@@ -767,7 +766,6 @@ export function create(api) {
       turns = 0;
       alive = true;
       killCount = 0;
-      floorsCleared = 0;
       log = [];
       banner = { text: 'DEPTH 1', color: PAL.cyan, life: 1.8 };
       hitFx = 0;

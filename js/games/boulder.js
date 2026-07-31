@@ -198,13 +198,12 @@ export function create(api) {
     // Boulders and gems scattered through the dirt.
     const boulderRate = 0.11 + l * 0.012;
     const gemRate = 0.045 + l * 0.004;
-    let placed = 0;
     for (let y = 1; y < gh - 1; y++) {
       for (let x = 1; x < gw - 1; x++) {
         const i = idx(x, y);
         if (grid[i] !== T.DIRT) continue;
         if (rng.chance(boulderRate)) grid[i] = T.BOULDER;
-        else if (rng.chance(gemRate)) { grid[i] = T.DIAMOND; placed++; }
+        else if (rng.chance(gemRate)) { grid[i] = T.DIAMOND; }
       }
     }
 

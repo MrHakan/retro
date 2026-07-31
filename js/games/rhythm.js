@@ -12,7 +12,7 @@
  * arrow can only ever land on a drum hit that you can actually hear.
  */
 
-import { PAL, TAU, clamp, alpha, mix, text } from '../core/fx.js';
+import { PAL, clamp, alpha, mix, text } from '../core/fx.js';
 
 const VIEW = { w: 420, h: 480 };
 
