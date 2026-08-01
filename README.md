@@ -101,11 +101,11 @@ css/arcade.css           CRT styling, responsive layout, touch controls
 js/
   main.js                bootstrap + service worker registration
   core/
-    display.js           high-DPI canvas, virtual-resolution letterboxing, CRT post
+    display.js           high-DPI canvas, letterboxing, bloom, glow governor
     audio.js             8-bit Web Audio synthesizer + chiptune sequencer
     input.js             unified keyboard / pointer / virtual-touch action model
     storage.js           namespaced localStorage: scores, plays, achievements, keys
-    engine.js            RAF loop, game lifecycle, pause / game-over flow
+    engine.js            RAF loop, lifecycle, pause / game-over, hit-stop + flash
     fx.js                RNG, math, collision, particles, shake, palette, drawing
     ui.js                launcher, filtering, settings, modals, PWA install
   games/
@@ -161,8 +161,43 @@ downgrade earned by a particle-heavy shooter. When it engages, it says so in a
 toast rather than silently changing the look.
 
 Net effect in headless software rasterisation (no GPU — a deliberately harsh
-floor): 18 of 22 cabinets hold 58–60 fps, and the four heaviest sit at 33–48
-rather than 9–19.
+floor): most cabinets hold 55–60 fps, and the heaviest sit in the 30s rather
+than at 9–19.
+
+### The CRT layer
+
+The tube treatment is entirely CSS, composited by the GPU, so it costs nothing
+per frame and covers the menus as well as the games:
+
+- Horizontal scanlines **plus a vertical RGB aperture-grille mask**. The
+  grille is the part that matters — without it scanlines read as grey stripes
+  over a flat image rather than as light through a shadow mask.
+- The slow vertical refresh band a real CRT shows on camera, at very low
+  contrast: readable as motion, never as a distraction.
+- Tube geometry faked with rounded stage corners and an inner shadow, which
+  reads as curvature far more cheaply than warping the canvas would, plus a
+  saturation lift so the palette has phosphor punch instead of flat sRGB.
+- CRT power-on and power-off wipes when entering and leaving a cabinet.
+
+All of it is disabled under `prefers-reduced-motion`.
+
+### Impact feedback
+
+Screen shake alone was carrying every impact, which reads as noise rather than
+weight. The engine owns two more primitives, so no cabinet reimplements them:
+
+| Call | What it does |
+| --- | --- |
+| `api.hitStop(seconds)` | Freezes the simulation for a beat while rendering continues, so the held frame is what the player sees. The game is handed **no `dt` at all** during the freeze — physics must not creep — and particles run at quarter speed so the picture isn't completely dead. |
+| `api.flash(color, alpha, decay)` | Full-screen additive flash that decays on its own. |
+
+Both respect the "Reduce flashing" accessibility setting.
+
+All 22 cabinets mark their defining moment with them. Placement is the fiddly
+part: most death handlers open with an early-return guard (`if (!alive)
+return`), and injecting above it re-fires the freeze every time the handler is
+re-entered after death — so every call sits *below* the guard, and the one
+handler that had no guard got one.
 
 ### Audio: nothing is downloaded
 
