@@ -2,8 +2,8 @@
  * perf.mjs — steady-state framerate probe for individual cabinets.
  *
  * Complements smoke.mjs: that one proves the games *run*, this one measures
- * what they cost. Reports the engine's own fps plus whether the display's
- * auto glow governor decided to drop per-sprite `shadowBlur` for that game.
+ * what they cost. Reports the engine's own fps plus which tier the display's
+ * auto glow governor settled on for that game.
  *
  * Dev-only (needs Playwright):
  *   ln -sfn "$(npm root -g)" node_modules      # once
@@ -92,7 +92,7 @@ for (const id of targets) {
         res({
           engineFps: window.ARCADE.display.fps,
           particles: window.ARCADE.engine.particles.count,
-          soft: window.ARCADE.display.softGlow,
+          tier: window.ARCADE.display.glowTier,
           quality: window.ARCADE.display.glowQuality,
           state: window.ARCADE.engine.state,
         });
@@ -101,7 +101,7 @@ for (const id of targets) {
     requestAnimationFrame(tick);
   }), WINDOW);
 
-  const glow = r.quality === 'auto' ? (r.soft ? 'auto→fast' : 'auto→full') : r.quality;
+  const glow = r.quality === 'auto' ? `auto→${r.tier}` : r.quality;
   const warn = r.engineFps < 50 ? '  ⚠' : '';
   console.log(
     `${id.padEnd(14)} ${String(r.engineFps).padStart(4)}  ${glow.padEnd(9)} ` +

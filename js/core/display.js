@@ -44,17 +44,23 @@ export class Display {
     this.maxQuality = 2;
 
     /**
-     * Glow governor. Per-draw `shadowBlur` is by far the most expensive thing
-     * a 2D canvas game can do — measured here at roughly a 2-3x frame cost
-     * across the neon-heavy cabinets. The frame-level bloom above produces a
-     * very similar look for almost nothing, so on weaker hardware we suppress
-     * per-draw shadows and let the bloom carry it.
+     * Glow governor.
      *
-     * 'full' always draws shadows, 'fast' never does, 'auto' starts full and
-     * drops to fast when a cabinet cannot hold roughly 50 fps.
+     * Per-draw `shadowBlur` is by far the most expensive thing a 2D canvas
+     * game can do — measured across these cabinets at 2-4x the whole frame
+     * (vector warfare 30 -> 60 fps with it off, gravity flip 19 -> 51).
+     *
+     * A middle tier that merely clamped the radius was tried and dropped: it
+     * bought nothing measurable (30 -> 30 fps), because the cost is entering
+     * the shadow compositing path per draw, not the size of the blur. So the
+     * switch is binary — but turning shadows off raises the frame-level bloom
+     * to compensate, which keeps the neon look instead of going flat.
+     *
+     *   full  shadows drawn as the game asked   bloom 0.32
+     *   fast  shadows off, bloom carries it     bloom 0.58
      */
-    this.glowQuality = 'auto';
-    this.softGlow = false;
+    this.glowQuality = 'auto';   // auto | full | fast
+    this.glowTier = 'full';      // the tier actually in force
     this._autoSamples = [];
     this.onGlowDowngrade = null;
     this._installGlowGovernor();
@@ -87,8 +93,18 @@ export class Display {
     Object.defineProperty(this.bctx, 'shadowBlur', {
       configurable: true,
       get() { return desc.get.call(this); },
-      set(v) { desc.set.call(this, display.softGlow ? 0 : v); },
+      set(v) { desc.set.call(this, display.glowTier === 'fast' ? 0 : v); },
     });
+  }
+
+  /** Bloom strength for the tier in force — weaker tiers lean on it harder. */
+  get bloomAlpha() {
+    return this.glowTier === 'fast' ? 0.58 : 0.32;
+  }
+
+  /** True when the auto governor has stepped below full quality. */
+  get isDowngraded() {
+    return this.glowQuality === 'auto' && this.glowTier !== 'full';
   }
 
   /** Set the virtual resolution the active game draws in. */
@@ -98,7 +114,7 @@ export class Display {
     // Each cabinet gets a fresh assessment — a light puzzle game shouldn't
     // inherit a downgrade earned by a particle-heavy shooter.
     this._autoSamples.length = 0;
-    if (this.glowQuality === 'auto') this.softGlow = false;
+    if (this.glowQuality === 'auto') this.glowTier = 'full';
     this.resize();
   }
 
@@ -108,9 +124,8 @@ export class Display {
     if (glowQuality != null) {
       this.glowQuality = glowQuality;
       this._autoSamples.length = 0;
-      if (glowQuality === 'full') this.softGlow = false;
-      else if (glowQuality === 'fast') this.softGlow = true;
-      else this.softGlow = false;
+      // 'auto' begins optimistic and earns its way down.
+      this.glowTier = glowQuality === 'auto' ? 'full' : glowQuality;
     }
     this.resize();
   }
@@ -201,7 +216,7 @@ export class Display {
       c.save();
       c.setTransform(1, 0, 0, 1, 0, 0);
       c.globalCompositeOperation = 'lighter';
-      c.globalAlpha = 0.32;
+      c.globalAlpha = this.bloomAlpha;
       c.imageSmoothingEnabled = true;
       c.drawImage(this.bloom, 0, 0, this.buffer.width, this.buffer.height);
       c.restore();
@@ -242,19 +257,19 @@ export class Display {
    * the startup hitch and a single unlucky frame.
    */
   _sampleGlowBudget() {
-    if (this.glowQuality !== 'auto' || this.softGlow) return;
+    if (this.glowQuality !== 'auto' || this.glowTier === 'fast') return;
     const s = this._autoSamples;
     s.push(this._fps);
     if (s.length > 5) s.shift();
     if (s.length < 4) return;
     const sorted = s.slice().sort((a, b) => a - b);
     const median = sorted[sorted.length >> 1];
-    if (median < 50) {
-      this.softGlow = true;
-      s.length = 0;
-      if (this.onGlowDowngrade) this.onGlowDowngrade(median);
-    }
+    if (median >= 50) return;
+    this.glowTier = 'fast';
+    s.length = 0;
+    if (this.onGlowDowngrade) this.onGlowDowngrade(median, this.glowTier);
   }
+
 
   get fps() {
     return this._fps;

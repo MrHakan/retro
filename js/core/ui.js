@@ -385,7 +385,7 @@ export class ArcadeShell {
     // Surfaced rather than silent: a player who notices the glow soften
     // should be able to find out why and override it in Settings.
     this.display.onGlowDowngrade = (fps) => {
-      this.toast(`GLOW REDUCED FOR SPEED (${fps} FPS) — CHANGE IN SETTINGS`, 3200);
+      this.toast(`GLOW SOFTENED FOR SPEED (${fps} FPS) — CHANGE IN SETTINGS`, 3200);
     };
     this.engine.onScoreChange = () => this.renderReadout();
     this.engine.onStatusChange = () => this.renderReadout();
