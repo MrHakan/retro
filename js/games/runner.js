@@ -684,7 +684,7 @@ export function create(api) {
 
       if (sliding) {
         slideT -= dt;
-        // Let go early to stand back up, but never below the minimum window.
+        // Let go early to stand back up, but never below the committed minimum.
         if (slideT <= 0 && (!downHeld || !onGround)) endSlide();
         else if (slideT <= SLIDE_TIME * 0.35 && !downHeld) endSlide();
       }

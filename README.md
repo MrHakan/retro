@@ -130,6 +130,39 @@ CRT effects layer on top: scanlines and vignette as CSS overlays (free),
 phosphor bloom as an additive blurred re-composite of the buffer, and
 pixelation by dropping the buffer to 1:1 with image smoothing off.
 
+The bloom is taken from a **one-third-scale copy** of the frame, with the blur
+applied while writing into that small canvas. Blur cost scales with area, and
+`ctx.filter` on a full-size destination is a slow path in every engine tested —
+confining it to a ninth of the pixels took the effect from ~15 fps of overhead
+down to ~5.
+
+### The glow governor
+
+Per-draw `shadowBlur` is the single most expensive thing a 2D canvas game can
+do. Measured across this catalogue it costs **2–4x the entire frame**:
+
+| Cabinet | shadowBlur on | forced off |
+| --- | --- | --- |
+| Geometry Vector Warfare | 25 fps | 60 fps |
+| Gravity Flip Runner | 19 fps | 51 fps |
+| Neon Cyber-Snake | 49 fps | 60 fps |
+
+Since the frame-level bloom is now nearly free and produces a very similar
+look, `Display` installs a governor that intercepts `shadowBlur` writes **on
+the game buffer's context only** (an instance property, never the prototype).
+Games keep asking for glow exactly as they always did; the engine decides
+whether to pay for it.
+
+`Settings → Glow quality` exposes this as Auto / Full / Fast. Auto keeps a
+rolling median of the last ~2.5 s and drops to bloom-only if a cabinet cannot
+hold ~50 fps, re-assessing per game so a light puzzler never inherits a
+downgrade earned by a particle-heavy shooter. When it engages, it says so in a
+toast rather than silently changing the look.
+
+Net effect in headless software rasterisation (no GPU — a deliberately harsh
+floor): 18 of 22 cabinets hold 58–60 fps, and the four heaviest sit at 33–48
+rather than 9–19.
+
 ### Audio: nothing is downloaded
 
 `audio.js` is a small chiptune synthesizer. Band-limited pulse waves at 12.5%,
@@ -178,9 +211,13 @@ shortcuts that deep-link straight into a cabinet (`./?game=pinball`).
 
 ## Development
 
+The dev tools need Playwright; the site itself needs nothing.
+
 ```bash
-node tools/make-icons.mjs                       # regenerate the PWA icons
-NODE_PATH=$(npm root -g) node tools/smoke.mjs    # headless test of all 22 games
+ln -sfn "$(npm root -g)" node_modules   # once — gitignored, dev only
+node tools/make-icons.mjs               # regenerate the PWA icons
+node tools/smoke.mjs                    # headless test of all 22 cabinets
+node tools/perf.mjs --all               # steady-state framerate per cabinet
 ```
 
 `smoke.mjs` serves the repo from a `/repository-name/` sub-path — proving the
@@ -191,6 +228,11 @@ finishes by reloading with the network disabled to confirm the offline cache
 actually serves the site.
 
 Useful flags: `--headed`, `--only=snake,pinball`, `--seconds=6`.
+
+`perf.mjs` reports each cabinet's steady-state fps and whether the glow
+governor engaged for it. Flags: `--all`, `--glow=full|fast|auto`,
+`--settle=<s>`, `--window=<s>`. Absolute numbers are pessimistic (headless
+Chromium rasterises on the CPU); read them comparatively.
 
 ### Adding a cabinet
 

@@ -39,10 +39,11 @@ const OFF_LIMIT = MAX_SPEED / 3.6;   // speed the dirt drags you down to
 const CENTRIFUGAL = 0.34;
 
 const TRACK_SEGS = 1500;             // minimum built length before padding
-const CP_SEGS = 260;                 // segments between checkpoint gates
+const CP_SEGS = 340;                 // segments between checkpoint gates
 const CP_DIST = CP_SEGS * SEG_LEN;
 const CP_BONUS = 9;                  // seconds granted per gate
 const START_TIME = 32;
+const KM = 100000;                   // world units per displayed kilometre
 
 const TRAFFIC = 26;
 const CAR_W = 1100;                  // traffic car width in world units
@@ -235,7 +236,7 @@ export function create(api) {
       curve,
       cars: [],
       gate: false,
-      pylon: n % 12 === 0,
+      pylon: n % 16 === 0,
       pal: Math.floor(n / RUMBLE_LEN) % 2 ? PAL_DARK : PAL_LIGHT,
       clip: 0,
       fog: 0,
@@ -283,9 +284,15 @@ export function create(api) {
       }
     }
 
-    // Bring the elevation home so the loop seam is invisible, then pad the
-    // length out to a whole number of checkpoint blocks.
+    // Bring the elevation home so the loop seam is invisible, then fill the
+    // rest of the final checkpoint block with real road rather than one long
+    // dead straight before padding out the last few segments.
     addRoad(24, 32, 24, 0, -lastY() / SEG_LEN);
+    let rem = (CP_SEGS - (segments.length % CP_SEGS)) % CP_SEGS;
+    while (rem >= 90) {
+      addRoad(28, 34, 28, api.rng.sign() * CURVE.EASY, 0);
+      rem -= 90;
+    }
     while (segments.length % CP_SEGS !== 0) addSegment(0, lastY());
 
     trackLength = segments.length * SEG_LEN;
@@ -327,13 +334,12 @@ export function create(api) {
     over = true;
     if (hum) { hum.stop(); hum = null; }
     api.shakeScreen(10, 5);
-    const km = traveled / 1000;
     const speedBonus = Math.round((traveled / Math.max(1, api.time) / MAX_SPEED) * 900);
     api.addScore(speedBonus);
     api.gameOver({
       message: reason,
       stats: {
-        DISTANCE: km.toFixed(2) + ' km',
+        DISTANCE: (traveled / KM).toFixed(2) + ' km',
         CHECKPOINTS: checkpoint,
         OVERTAKES: overtakes,
         'SPEED BONUS': speedBonus,
@@ -526,7 +532,7 @@ export function create(api) {
       const t = Math.ceil(timer);
       if (t !== statusT) {
         statusT = t;
-        api.setStatus({ TIME: t, KM: (traveled / 1000).toFixed(2), PASSED: overtakes });
+        api.setStatus({ TIME: t, KM: (traveled / KM).toFixed(2), PASSED: overtakes });
       }
     },
 
@@ -665,7 +671,8 @@ export function create(api) {
           const sy = lerp(seg.p1.screen.y, seg.p2.screen.y, pct);
           const cw = (sc * CAR_W * W) / 2;
           if (cw < 1.5 || cw > W * 3) continue;
-          drawSprite(ctx, seg.clip, () => drawTraffic(ctx, sx, sy, cw, car.color));
+          drawSprite(ctx, seg.clip, sy - cw * 0.62, sy,
+            () => drawTraffic(ctx, sx, sy, cw, car.color));
         }
       }
 
@@ -706,9 +713,14 @@ export function create(api) {
 
   /* --------------------------------------------------------------- sprites */
 
-  /** Draw `fn` clipped to the road already painted in front of this segment. */
-  function drawSprite(ctx, clipY, fn) {
-    if (clipY >= VIEW_H) { fn(); return; }
+  /**
+   * Draw `fn` hidden behind the road already painted in front of this segment.
+   * The expensive clip is only paid for when the sprite actually straddles the
+   * hill crest — otherwise it is a trivial accept or reject.
+   */
+  function drawSprite(ctx, clipY, topY, botY, fn) {
+    if (botY <= clipY || clipY >= VIEW_H) { fn(); return; }
+    if (topY >= clipY) return;
     ctx.save();
     ctx.beginPath();
     ctx.rect(0, 0, VIEW_W, clipY);
@@ -751,7 +763,7 @@ export function create(api) {
     const lx = s.x - s.w * 1.18;
     const rx = s.x + s.w * 1.18;
     if (postH < 2 || postH > VIEW_H * 4) return;
-    drawSprite(ctx, seg.clip, () => {
+    drawSprite(ctx, seg.clip, s.y - postH, s.y, () => {
       ctx.save();
       ctx.fillStyle = PAL.yellow;
       ctx.globalAlpha = 0.9;
@@ -769,7 +781,7 @@ export function create(api) {
     if (h < 1 || h > VIEW_H) return;
     const px = s.x + (s.scale * offset * ROAD_WIDTH * VIEW_W) / 2;
     const w = Math.max(1, h * 0.28);
-    drawSprite(ctx, seg.clip, () => {
+    drawSprite(ctx, seg.clip, s.y - h, s.y, () => {
       ctx.fillStyle = seg.pal === PAL_DARK ? PAL.cyan : '#8f9fc0';
       ctx.fillRect(px - w / 2, s.y - h, w, h);
     });
@@ -903,12 +915,12 @@ export function create(api) {
     ctx.stroke();
     ctx.restore();
 
-    const kmh = Math.round(speedPct * 340);
+    const kmh = Math.round((speed / KM) * 3600);
     text(ctx, String(kmh), gx, gy + 6, { size: 17, color: PAL.white, align: 'center', glow: 6 });
     text(ctx, 'KM/H', gx, gy + 22, { size: 8, color: PAL.dim, align: 'center' });
 
     /* Distance, overtakes and the off-road warning. */
-    text(ctx, (traveled / 1000).toFixed(2) + ' KM', 8, H - 34, { size: 10, color: PAL.cyan });
+    text(ctx, (traveled / KM).toFixed(2) + ' KM', 8, H - 34, { size: 10, color: PAL.cyan });
     text(ctx, 'PASSED ' + overtakes, 8, H - 21, { size: 10, color: PAL.lime });
     text(ctx, 'CP ' + checkpoint, 8, H - 8, { size: 9, color: PAL.dim });
 
