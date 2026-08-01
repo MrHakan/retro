@@ -382,6 +382,11 @@ export class ArcadeShell {
   }
 
   _wireEngine() {
+    // Surfaced rather than silent: a player who notices the glow soften
+    // should be able to find out why and override it in Settings.
+    this.display.onGlowDowngrade = (fps) => {
+      this.toast(`GLOW REDUCED FOR SPEED (${fps} FPS) — CHANGE IN SETTINGS`, 3200);
+    };
     this.engine.onScoreChange = () => this.renderReadout();
     this.engine.onStatusChange = () => this.renderReadout();
     this.engine.onExit = () => this.quitToHub();
@@ -443,6 +448,7 @@ export class ArcadeShell {
     bind('set-music', 'change', (e) => this._set({ music: e.target.checked }));
     bind('set-scanlines', 'change', (e) => this._set({ scanlines: e.target.checked }));
     bind('set-glow', 'change', (e) => this._set({ glow: e.target.checked }));
+    bind('set-glow-quality', 'change', (e) => this._set({ glowQuality: e.target.value }));
     bind('set-pixelate', 'change', (e) => this._set({ pixelate: e.target.checked }));
     bind('set-fps', 'change', (e) => this._set({ showFps: e.target.checked }));
     bind('set-reduced', 'change', (e) => this._set({ reducedFlash: e.target.checked }));
@@ -479,7 +485,7 @@ export class ArcadeShell {
     const s = this.settings;
     document.body.classList.toggle('crt-scanlines', !!s.scanlines);
     document.body.classList.toggle('crt-glow', !!s.glow);
-    this.display.setEffects({ pixelate: s.pixelate, glow: s.glow });
+    this.display.setEffects({ pixelate: s.pixelate, glow: s.glow, glowQuality: s.glowQuality });
     this.audio.setMaster(s.master);
     this.audio.setSfxEnabled(s.sfx);
     this.audio.setMusicEnabled(s.music);
@@ -495,6 +501,7 @@ export class ArcadeShell {
     $('set-music').checked = !!s.music;
     $('set-scanlines').checked = !!s.scanlines;
     $('set-glow').checked = !!s.glow;
+    $('set-glow-quality').value = s.glowQuality || 'auto';
     $('set-pixelate').checked = !!s.pixelate;
     $('set-fps').checked = !!s.showFps;
     $('set-reduced').checked = !!s.reducedFlash;

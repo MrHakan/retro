@@ -43,6 +43,7 @@ const DEFAULTS = {
     music: true,
     scanlines: true,
     glow: true,
+    glowQuality: 'auto', // auto | full | fast
     pixelate: false,
     showFps: false,
     touchControls: 'auto', // auto | always | never

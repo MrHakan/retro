@@ -233,9 +233,8 @@ export function create(api) {
         for (let c = 0; c < cols; c++) {
           // Tougher tiers ride the top rows, exactly like the arcade original.
           let tier = 'grunt';
-          if (r === 0) tier = n >= 7 ? 'elite' : 'gunner';
-          else if (r === 1) tier = n >= 4 ? 'gunner' : 'drone';
-          else if (r === 2) tier = 'drone';
+          if (r === 0) tier = n >= 8 ? 'elite' : n >= 4 ? 'gunner' : 'drone';
+          else if (r === 1) tier = n >= 6 ? 'gunner' : 'drone';
           aliens.push(makeAlien(tier, c, r, cols, hpMul));
         }
       }
@@ -890,7 +889,10 @@ export function create(api) {
         a.cd -= dt * (1 + diff * 0.05);
         if (a.cd <= 0 && a.y > 0 && a.y < py - 30 && eb.length < MAX_EB - 12) {
           const T = TIERS[a.tier];
-          a.cd = api.rng.range(T.cd[0], T.cd[1]) / (1 + diff * 0.06);
+          // Cooldowns stretch with the squadron size so a fat formation does
+          // not multiply the curtain — density stays dodgeable at every wave.
+          a.cd = api.rng.range(T.cd[0], T.cd[1])
+            * clamp(aliens.length / 5, 1, 4) / (1 + diff * 0.06);
           alienFire(a, diff);
         }
       }
@@ -935,6 +937,7 @@ export function create(api) {
         if (alive && invuln <= 0 && dist2(b.x, b.y, px, py) < (b.r + PLAYER_R) ** 2) {
           eb.splice(i, 1);
           hitPlayer();
+          break;      // hitPlayer may wipe the curtain; restart next frame
         }
       }
 
