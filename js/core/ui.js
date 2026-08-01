@@ -516,6 +516,7 @@ export class ArcadeShell {
     this.audio.setMusicEnabled(s.music);
     this.input.setTouchMode(s.touchControls);
     this.engine.showFps = !!s.showFps;
+    this.engine.reducedFlash = !!s.reducedFlash;
     this.el.fps.hidden = !s.showFps;
   }
 

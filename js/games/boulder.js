@@ -423,6 +423,7 @@ export function create(api) {
   function explode(cx, cy, fromEnemy) {
     const toGems = fromEnemy && convertEnemies;
     api.shakeScreen(9, 5);
+    api.hitStop(0.05);
     api.sfx('explosion', { vol: 0.5 });
     api.vibrate(60);
 
@@ -589,6 +590,8 @@ export function create(api) {
     lives--;
     api.setStatus({ LEVEL: level, GEMS: `${got}/${need}`, LIVES: Math.max(0, lives) });
     api.shakeScreen(12, 5);
+    api.hitStop(0.08);
+    api.flash(PAL.orange, 0.4);
     api.vibrate(150);
     api.sfx('explosion');
     api.particles.burst(px * CELL + CELL / 2, py * CELL + CELL / 2, 26, {

@@ -491,6 +491,8 @@ export function create(api) {
     lives--;
     api.sfx('hurt');
     api.shakeScreen(9, 5);
+    api.hitStop(0.07);
+    api.flash(PAL.red, 0.4);
     api.vibrate(90);
     wideT = laserT = magnetT = slowT = 0;
     caps.length = 0;

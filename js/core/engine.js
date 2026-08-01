@@ -41,6 +41,10 @@ export class Engine {
 
     this.particles = new Particles(1000);
     this.shake = new Shake();
+    // Impact feedback owned by the engine so every cabinet gets it for free.
+    this.hitStop = 0;              // seconds of frozen simulation remaining
+    this.flash = null;             // { color, alpha, decay }
+    this.reducedFlash = false;
     this.rng = new RNG();
 
     this._raf = null;
@@ -75,6 +79,8 @@ export class Engine {
     this.elapsed = 0;
     this.particles.clear();
     this.shake.reset();
+    this.hitStop = 0;
+    this.flash = null;
     this.rng.seed(opts.seed ?? (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0);
 
     const view = meta.view || { w: 480, h: 360 };
@@ -144,6 +150,19 @@ export class Engine {
 
       /* --- juice --- */
       shakeScreen(mag, decay) { engine.shake.add(mag, decay); },
+      /**
+       * Freeze the simulation for a beat on impact — the single cheapest
+       * trick for making a hit feel like it landed. Rendering continues, so
+       * the frozen frame is what the player actually sees.
+       */
+      hitStop(seconds = 0.05) {
+        engine.hitStop = Math.min(0.2, Math.max(engine.hitStop, seconds));
+      },
+      /** Full-screen colour flash that decays over `decay` seconds. */
+      flash(color = '#ffffff', alpha = 0.5, decay = 6) {
+        if (engine.reducedFlash) return;
+        engine.flash = { color, alpha, decay };
+      },
       vibrate(ms) {
         if (navigator.vibrate && engine.storage.getSettings().haptics !== false) {
           try { navigator.vibrate(ms); } catch { /* unsupported */ }
@@ -209,6 +228,21 @@ export class Engine {
     // Clamp so an alt-tab or a slow frame can't tunnel physics through walls.
     const dt = Math.min(Math.max(raw, 0), 1 / 30);
 
+    if (this.flash) {
+      this.flash.alpha -= this.flash.alpha * this.flash.decay * dt + dt * 0.35;
+      if (this.flash.alpha <= 0.01) this.flash = null;
+    }
+
+    if (this.hitStop > 0) {
+      // Bleed the freeze down in real time, but hand the game no dt at all:
+      // physics must not creep while the picture is held.
+      this.hitStop -= dt;
+      this.particles.update(dt * 0.25);
+      this.shake.update(dt);
+      this._draw();
+      return;
+    }
+
     if (this.state === STATE.PLAYING && this.game) {
       this.elapsed += dt;
       try {
@@ -225,6 +259,15 @@ export class Engine {
       this.shake.update(dt);
     }
 
+    this._draw(dt);
+
+    if (this.display.tickFps(dt) && this.showFps && this.hud?.fps) {
+      this.hud.fps.textContent = this.display.fps + ' FPS';
+    }
+  }
+
+  /** Render one frame: game, then the impact flash on top. */
+  _draw() {
     const ctx = this.display.begin();
     if (this.game) {
       ctx.save();
@@ -236,11 +279,18 @@ export class Engine {
       }
       ctx.restore();
     }
-    this.display.end();
 
-    if (this.display.tickFps(dt) && this.showFps && this.hud?.fps) {
-      this.hud.fps.textContent = this.display.fps + ' FPS';
+    if (this.flash) {
+      const f = this.flash;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, f.alpha);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = f.color;
+      ctx.fillRect(0, 0, this.display.vw, this.display.vh);
+      ctx.restore();
     }
+
+    this.display.end();
   }
 
   /* --------------------------------------------------------------- flow  */

@@ -513,6 +513,8 @@ export function create(api) {
     alive = false;
     cur = null;
     api.shakeScreen(14, 4);
+    api.hitStop(0.07);
+    api.flash(PAL.magenta, 0.35);
     api.sfx('explosion');
     api.vibrate(160);
     // Dissolve the stack.

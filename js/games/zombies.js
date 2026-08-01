@@ -411,6 +411,7 @@ export function create(api) {
     });
     api.sfx(z.kind === 'brute' ? 'boom' : 'hit', { detune: z.kind === 'runner' ? 5 : -3 });
     if (z.kind === 'brute') api.shakeScreen(6, 6);
+    if (z.kind === 'brute') api.hitStop(0.045);
     zombies.splice(i, 1);
     maybeDrop(z.x, z.y, z.kind);
   }
@@ -478,6 +479,8 @@ export function create(api) {
       over = true;
       splat(player.x, player.y, 26, 26, 0.5);
       api.shakeScreen(16, 4);
+    api.hitStop(0.09);
+    api.flash(PAL.red, 0.5);
       api.gameOver({
         message: 'DEVOURED ON WAVE ' + wave,
         stats: {

@@ -452,6 +452,7 @@ export function create(api) {
     say('MULTIBALL!  x3', 2.4);
     api.sfx('horn');
     api.shakeScreen(9, 4);
+    api.hitStop(0.06);
     for (let i = 0; i < 2; i++) {
       balls.push(makeBall(150 + i * 90, 120, api.rng.range(-70, 70), 40));
     }

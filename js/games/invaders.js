@@ -331,6 +331,7 @@ export function create(api) {
     power.bombs--;
     bombFlash = 1;
     api.shakeScreen(11, 4);
+    api.hitStop(0.05);
     api.vibrate(90);
     api.sfx('explosion');
     // Every bullet on screen becomes score confetti.
@@ -374,6 +375,8 @@ export function create(api) {
     power.spread = 0;
     power.beam = 0;
     api.shakeScreen(14, 4);
+    api.hitStop(0.08);
+    api.flash(PAL.red, 0.45);
     api.vibrate(140);
     api.sfx('explosion');
     api.particles.burst(px, py, 26, {

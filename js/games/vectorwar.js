@@ -273,6 +273,8 @@ export function create(api) {
     player.invuln = INVULN;
     api.sfx('explosion');
     api.shakeScreen(18, 4);
+    api.hitStop(0.09);
+    api.flash(PAL.cyan, 0.45);
     api.vibrate(160);
     api.particles.burst(player.x, player.y, 30, {
       speed: 220, life: 0.9, size: 3, color: [PAL.white, PAL.red, PAL.orange],
