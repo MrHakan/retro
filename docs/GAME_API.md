@@ -88,6 +88,13 @@ api.highScore()         best recorded score for this game
 api.gameOver({score?, message?, stats?})   end the run
 api.win({score?, message?, stats?})        end the run as a victory
 api.shakeScreen(mag, decay?)
+api.hitStop(seconds)    freeze the simulation for a beat on impact (max 0.2).
+                        Rendering continues, so the held frame is what the
+                        player sees, and your update() receives no dt at all
+                        during the freeze.
+api.flash(color, alpha, decay?)  full-screen additive flash that decays on
+                        its own. Silently ignored when the player has enabled
+                        "Reduce flashing".
 api.vibrate(ms)
 api.time                seconds since the run started
 api.isTouch             boolean
@@ -122,7 +129,13 @@ call it, they will not be drawn.
 9. **Draw your own background.** The buffer is cleared to black each frame.
 10. **Performance budget.** Target 60 fps on a mid-range phone: keep particle
     bursts under ~40 at a time, avoid per-frame allocations in hot loops, and
-    avoid `shadowBlur` on more than a few dozen draws per frame.
+    avoid `shadowBlur` on more than a few dozen draws per frame — it is the
+    most expensive thing you can do on a 2D canvas, and the engine will
+    quietly switch it off for your cabinet if you overspend it.
+11. **Reserve impact feedback for impact.** `hitStop` and `flash` stop being
+    feedback if they fire constantly. Use them where you would already have
+    justified a heavy screen shake — taking damage, dying, clearing four
+    lines — not on every bullet.
 
 ## Skeleton
 

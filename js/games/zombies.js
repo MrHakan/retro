@@ -157,16 +157,40 @@ export function create(api) {
     c.width = api.w;
     c.height = api.h;
     const g = c.getContext('2d');
-    g.fillStyle = '#0b0e14';
+    g.fillStyle = '#12161f';
     g.fillRect(0, 0, c.width, c.height);
-    // Concrete slabs.
+
+    // Concrete slabs. The values here were originally within two points of
+    // each other, which made the whole arena read as flat black; the texture
+    // only does its job with real separation between slabs.
+    const SLABS = ['#171d28', '#131822', '#1a212d', '#10151e'];
     for (let y = 0; y < c.height; y += 30) {
       for (let x = 0; x < c.width; x += 30) {
-        g.fillStyle = api.rng.chance(0.5) ? '#0d111a' : '#0a0d15';
+        g.fillStyle = api.rng.pick(SLABS);
         g.fillRect(x, y, 29, 29);
+        // Worn top-left bevel: sells the slabs as poured concrete.
+        g.fillStyle = alpha('#2b3548', 0.5);
+        g.fillRect(x, y, 29, 1);
+        g.fillRect(x, y, 1, 29);
+        g.fillStyle = alpha('#05070c', 0.45);
+        g.fillRect(x, y + 28, 29, 1);
+        g.fillRect(x + 28, y, 1, 29);
       }
     }
-    g.strokeStyle = '#141c2b';
+
+    // Grime pooling in the slab joints.
+    for (let i = 0; i < 40; i++) {
+      const gx = api.rng.range(0, c.width);
+      const gy = api.rng.range(0, c.height);
+      const gr = api.rng.range(14, 46);
+      const grad = g.createRadialGradient(gx, gy, 0, gx, gy, gr);
+      grad.addColorStop(0, alpha('#070a11', api.rng.range(0.25, 0.5)));
+      grad.addColorStop(1, alpha('#070a11', 0));
+      g.fillStyle = grad;
+      g.fillRect(gx - gr, gy - gr, gr * 2, gr * 2);
+    }
+
+    g.strokeStyle = '#232f45';
     g.lineWidth = 1;
     g.beginPath();
     for (let x = 0; x <= c.width; x += 30) { g.moveTo(x + 0.5, 0); g.lineTo(x + 0.5, c.height); }
@@ -191,8 +215,29 @@ export function create(api) {
       }
       g.stroke();
     }
+
+    // Floor drains and a painted lane marking, so the eye has landmarks to
+    // track movement against instead of an undifferentiated field.
+    for (let i = 0; i < 3; i++) {
+      const dx = api.rng.range(60, c.width - 60);
+      const dy = api.rng.range(60, c.height - 60);
+      g.fillStyle = '#0a0e16';
+      g.fillRect(dx - 9, dy - 9, 18, 18);
+      g.strokeStyle = alpha('#3a4a68', 0.7);
+      g.lineWidth = 1;
+      g.strokeRect(dx - 8.5, dy - 8.5, 17, 17);
+      for (let b = -6; b <= 6; b += 4) {
+        g.beginPath();
+        g.moveTo(dx - 6, dy + b);
+        g.lineTo(dx + 6, dy + b);
+        g.stroke();
+      }
+    }
+    g.fillStyle = alpha(PAL.yellow, 0.05);
+    g.fillRect(0, c.height * 0.5 - 1.5, c.width, 3);
+
     // A faint hazard chevron border.
-    g.fillStyle = alpha(PAL.yellow, 0.06);
+    g.fillStyle = alpha(PAL.yellow, 0.09);
     for (let x = -20; x < c.width; x += 20) {
       g.beginPath();
       g.moveTo(x, 0); g.lineTo(x + 10, 0); g.lineTo(x + 2, 8); g.lineTo(x - 8, 8);
@@ -972,7 +1017,19 @@ export function create(api) {
 
       // The permanent floor: arena surface + every splatter and casing so far.
       if (floor) ctx.drawImage(floor, 0, 0);
-      else { ctx.fillStyle = '#0b0e14'; ctx.fillRect(0, 0, w, h); }
+      else { ctx.fillStyle = '#12161f'; ctx.fillRect(0, 0, w, h); }
+
+      // Darkness everywhere except a pool of light the player carries. This
+      // is what gives the arena depth — the floor detail reads near the
+      // player and falls away into the dark where the horde comes from.
+      ctx.save();
+      const lamp = ctx.createRadialGradient(player.x, player.y, 20, player.x, player.y, Math.max(w, h) * 0.52);
+      lamp.addColorStop(0, 'rgba(0,0,0,0)');
+      lamp.addColorStop(0.45, 'rgba(2,3,7,0.35)');
+      lamp.addColorStop(1, 'rgba(2,3,7,0.82)');
+      ctx.fillStyle = lamp;
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
 
       // Drops.
       for (const d of drops) {
