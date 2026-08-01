@@ -6,8 +6,9 @@
  * screenshots it, and fails on any console error, page error, failed request
  * or frozen frame.
  *
- * Dev-only. The deployed site has no dependencies; this needs Playwright:
- *   NODE_PATH=$(npm root -g) node tools/smoke.mjs [--headed] [--only=snake,tetris]
+ * Dev-only. The deployed site has no dependencies; this one needs Playwright
+ * (`npm i -D playwright`):
+ *   node tools/smoke.mjs [--headed] [--only=snake,tetris] [--seconds=6]
  */
 
 import { createServer } from 'node:http';

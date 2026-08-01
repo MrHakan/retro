@@ -23,13 +23,11 @@ export class Display {
     this.buffer = document.createElement('canvas');
     this.bctx = this.buffer.getContext('2d', { alpha: false });
 
-    // Bloom is taken from a downscaled copy of the frame. Blur cost scales
-    // with area, so blurring at 1/3 scale is ~9x cheaper than blurring the
-    // full buffer — and the upscale softens it further, which is exactly the
-    // look we want anyway.
+    // Quarter-resolution bloom texture. Blurring the full composite is a
+    // fill-rate disaster at retina sizes — downsample first, blur the small
+    // copy, then let the upscale do most of the spreading for free.
     this.bloom = document.createElement('canvas');
-    this.bloomCtx = this.bloom.getContext('2d', { alpha: false });
-    this.bloomDiv = 3;
+    this.blctx = this.bloom.getContext('2d', { alpha: false });
 
     this.vw = 480;
     this.vh = 360;
@@ -53,7 +51,7 @@ export class Display {
      * per-draw shadows and let the bloom carry it.
      *
      * 'full' always draws shadows, 'fast' never does, 'auto' starts full and
-     * drops to fast if the first few seconds of a game can't hold ~45 fps.
+     * drops to fast when a cabinet cannot hold roughly 50 fps.
      */
     this.glowQuality = 'auto';
     this.softGlow = false;
@@ -123,7 +121,13 @@ export class Display {
     const cssH = Math.max(1, Math.floor(rect.height));
     // Cap DPR on very dense phone screens: 3x of a full-screen canvas is a lot
     // of fill rate for a 60 fps particle-heavy game.
-    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    let dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    // Hard ceiling on total backing pixels. A 2x tablet in landscape asks for
+    // ~3.3M pixels, which costs more than the visual difference is worth.
+    const BUDGET = 2_600_000;
+    if (cssW * cssH * dpr * dpr > BUDGET) {
+      dpr = Math.max(1, Math.sqrt(BUDGET / (cssW * cssH)));
+    }
 
     this.cssW = cssW;
     this.cssH = cssH;
@@ -153,11 +157,11 @@ export class Display {
       this.buffer.height = bh;
     }
 
-    const lw = Math.max(1, Math.round(bw / this.bloomDiv));
-    const lh = Math.max(1, Math.round(bh / this.bloomDiv));
-    if (this.bloom.width !== lw || this.bloom.height !== lh) {
-      this.bloom.width = lw;
-      this.bloom.height = lh;
+    const glw = Math.max(1, Math.round(bw / 4));
+    const glh = Math.max(1, Math.round(bh / 4));
+    if (this.bloom.width !== glw || this.bloom.height !== glh) {
+      this.bloom.width = glw;
+      this.bloom.height = glh;
     }
 
     this.screen.imageSmoothingEnabled = !this.pixelate;
@@ -176,6 +180,33 @@ export class Display {
 
   /** Composite the buffer to the visible canvas with CRT post-effects. */
   end() {
+    // Bloom is applied to the *buffer*, not the screen. Blending a full-screen
+    // additive pass at retina size costs ~4x more fill than doing it here, and
+    // the result is indistinguishable once it's upscaled.
+    if (this.glow) {
+      const b = this.blctx;
+      b.setTransform(1, 0, 0, 1, 0, 0);
+      b.globalCompositeOperation = 'source-over';
+      b.globalAlpha = 1;
+      b.filter = 'none';
+      b.imageSmoothingEnabled = true;
+      b.drawImage(this.buffer, 0, 0, this.bloom.width, this.bloom.height);
+      if (this._bloomSupported) {
+        b.filter = 'blur(1.5px)';
+        b.drawImage(this.bloom, 0, 0);
+        b.filter = 'none';
+      }
+
+      const c = this.bctx;
+      c.save();
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.globalCompositeOperation = 'lighter';
+      c.globalAlpha = 0.32;
+      c.imageSmoothingEnabled = true;
+      c.drawImage(this.bloom, 0, 0, this.buffer.width, this.buffer.height);
+      c.restore();
+    }
+
     const s = this.screen;
     const dpr = this.dpr;
     s.setTransform(1, 0, 0, 1, 0, 0);
@@ -189,25 +220,6 @@ export class Display {
     const dh = Math.round(this.vh * this.fit * dpr);
 
     s.drawImage(this.buffer, 0, 0, this.buffer.width, this.buffer.height, dx, dy, dw, dh);
-
-    if (this.glow && this._bloomSupported) {
-      // Blur while writing into the small canvas: the filter then runs over a
-      // ninth of the pixels. Compositing back up is a plain scaled drawImage,
-      // which keeps the expensive filtered path off the full-size canvas.
-      const b = this.bloomCtx;
-      b.setTransform(1, 0, 0, 1, 0, 0);
-      b.imageSmoothingEnabled = true;
-      b.filter = 'blur(1.5px)';
-      b.drawImage(this.buffer, 0, 0, this.bloom.width, this.bloom.height);
-      b.filter = 'none';
-
-      s.save();
-      s.globalCompositeOperation = 'lighter';
-      s.globalAlpha = 0.3;
-      s.imageSmoothingEnabled = true;
-      s.drawImage(this.bloom, 0, 0, this.bloom.width, this.bloom.height, dx, dy, dw, dh);
-      s.restore();
-    }
   }
 
   tickFps(dt) {

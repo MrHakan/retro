@@ -130,11 +130,12 @@ CRT effects layer on top: scanlines and vignette as CSS overlays (free),
 phosphor bloom as an additive blurred re-composite of the buffer, and
 pixelation by dropping the buffer to 1:1 with image smoothing off.
 
-The bloom is taken from a **one-third-scale copy** of the frame, with the blur
-applied while writing into that small canvas. Blur cost scales with area, and
-`ctx.filter` on a full-size destination is a slow path in every engine tested —
-confining it to a ninth of the pixels took the effect from ~15 fps of overhead
-down to ~5.
+The bloom is taken from a **quarter-scale copy** of the frame and composited
+back into the buffer rather than onto the screen. Blur cost scales with area,
+and `ctx.filter` on a full-size destination is a slow path in every engine
+tested — confining it to a sixteenth of the pixels cut the effect's cost by
+roughly 4x. It also degrades gracefully: where `ctx.filter` is unsupported the
+downsample-and-upscale alone still yields a soft glow.
 
 ### The glow governor
 
@@ -214,10 +215,11 @@ shortcuts that deep-link straight into a cabinet (`./?game=pinball`).
 The dev tools need Playwright; the site itself needs nothing.
 
 ```bash
-ln -sfn "$(npm root -g)" node_modules   # once — gitignored, dev only
-node tools/make-icons.mjs               # regenerate the PWA icons
-node tools/smoke.mjs                    # headless test of all 22 cabinets
-node tools/perf.mjs --all               # steady-state framerate per cabinet
+node tools/make-icons.mjs        # regenerate the PWA icons — needs nothing installed
+
+npm i -D playwright              # the test tools are the only thing with a dependency
+node tools/smoke.mjs             # headless run of all 22 cabinets
+node tools/perf.mjs --all        # steady-state framerate per cabinet
 ```
 
 `smoke.mjs` serves the repo from a `/repository-name/` sub-path — proving the

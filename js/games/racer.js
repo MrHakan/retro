@@ -186,7 +186,6 @@ export const meta = {
       const yy0 = hz + (h - hz) * t0 * t0;
       const yy1 = hz + (h - hz) * t1 * t1;
       const hw0 = 8 + (w * 0.55 - 8) * t0 * t0;
-      const hw1 = 8 + (w * 0.55 - 8) * t1 * t1;
       ctx.fillStyle = i % 2 ? '#eaf6ff' : accent;
       ctx.fillRect(vx - hw0 - 5, yy0, 6, yy1 - yy0 + 2);
       ctx.fillRect(vx + hw0 - 1, yy0, 6, yy1 - yy0 + 2);
