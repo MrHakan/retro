@@ -61,24 +61,62 @@ h1, h2, h3 { font-weight: 700; letter-spacing: 0.12em; margin: 0; }
 
 /* --------------------------------------------------------------- CRT FX -- */
 
-/* Scanlines + vignette live on ::before/::after of <body> so they cover the
-   whole shell (menus included) without costing a canvas pass. */
+/* The CRT treatment is entirely CSS: scanlines, an aperture-grille mask,
+   a rolling refresh band and a vignette, all composited by the GPU. Doing
+   this in the canvas would cost a full-screen per-pixel pass every frame;
+   here it is free, and it covers the menus as well as the games. */
+
+/* Layer 1 — horizontal scanlines + vertical RGB phosphor triads.
+   The grille is what stops the scanlines reading as "grey stripes on a flat
+   image" and makes it look like light through a shadow mask. */
 body.crt-scanlines::before {
   content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 900;
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0) 0px,
-    rgba(0, 0, 0, 0) 2px,
-    rgba(0, 0, 0, 0.28) 3px,
-    rgba(0, 0, 0, 0.28) 4px
-  );
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0) 0px,
+      rgba(0, 0, 0, 0) 2px,
+      rgba(0, 0, 0, 0.30) 3px,
+      rgba(0, 0, 0, 0.30) 4px
+    ),
+    repeating-linear-gradient(
+      to right,
+      rgba(255, 0, 0, 0.055) 0px,
+      rgba(0, 255, 0, 0.055) 1px,
+      rgba(0, 80, 255, 0.055) 2px,
+      rgba(0, 0, 0, 0) 3px
+    );
   mix-blend-mode: multiply;
 }
 
+/* Layer 2 — the slow vertical refresh band every real CRT has when filmed.
+   Very low contrast on purpose: readable as motion, never as a distraction. */
+body.crt-scanlines .stage::after {
+  content: "";
+  position: absolute;
+  inset: -20% 0 auto 0;
+  height: 22%;
+  pointer-events: none;
+  z-index: 8;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(190, 235, 255, 0.045) 45%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: crt-roll 7s linear infinite;
+}
+
+@keyframes crt-roll {
+  from { transform: translateY(0); }
+  to   { transform: translateY(560%); }
+}
+
+/* Layer 3 — vignette and a faint warm/cool phosphor cast over everything. */
 body::after {
   content: "";
   position: fixed;
@@ -86,16 +124,61 @@ body::after {
   pointer-events: none;
   z-index: 901;
   background:
-    radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 100%),
+    radial-gradient(ellipse at center, rgba(0,0,0,0) 52%, rgba(0,0,0,0.6) 100%),
     linear-gradient(rgba(34, 231, 255, 0.02), rgba(255, 62, 165, 0.02));
 }
 
+/* Tube geometry: rounded corners plus an inner shadow reads as curvature
+   far more cheaply than actually warping the canvas. The saturation lift
+   gives the palette the punch of phosphor rather than flat sRGB. */
+body.crt-glow .stage {
+  border-radius: 10px;
+  overflow: hidden;
+}
+body.crt-glow .stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 7;
+  border-radius: 10px;
+  box-shadow:
+    inset 0 0 40px rgba(0, 0, 0, 0.55),
+    inset 0 0 6px rgba(0, 0, 0, 0.8);
+}
 body.crt-glow #screen {
+  filter: saturate(1.12) contrast(1.04);
   box-shadow: 0 0 60px rgba(34, 231, 255, 0.16), 0 0 140px rgba(255, 62, 165, 0.09);
 }
 
+/* CRT power-on / power-off wipes when entering and leaving a cabinet. */
+.stage .crt-wipe {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+  background: #eaf6ff;
+  transform-origin: center;
+}
+.stage .crt-wipe.is-on  { animation: crt-power-on 0.42s ease-out forwards; }
+.stage .crt-wipe.is-off { animation: crt-power-off 0.3s ease-in forwards; }
+
+@keyframes crt-power-on {
+  0%   { transform: scaleY(0.006) scaleX(1);    opacity: 1; }
+  45%  { transform: scaleY(0.03)  scaleX(1);    opacity: 1; }
+  100% { transform: scaleY(1)     scaleX(1);    opacity: 0; }
+}
+@keyframes crt-power-off {
+  0%   { transform: scaleY(1)     scaleX(1);    opacity: 0.85; }
+  55%  { transform: scaleY(0.012) scaleX(1);    opacity: 1; }
+  100% { transform: scaleY(0.012) scaleX(0.02); opacity: 0; }
+}
+
+/* Everything above is decoration — none of it should animate for players who
+   have asked the OS to stop moving things. */
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  body.crt-scanlines .stage::after { display: none; }
 }
 
 /* --------------------------------------------------------------- BUTTONS - */

@@ -333,6 +333,27 @@ export class ArcadeShell {
     this.el.overDetail.hidden = false;
   }
 
+  /**
+   * Play the CRT power-on / power-off wipe over the stage. Purely cosmetic:
+   * if anything about it fails the game still starts normally.
+   */
+  crtWipe(kind) {
+    if (this.settings.reducedFlash) return;
+    let el = this._wipeEl;
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'crt-wipe';
+      this._wipeEl = el;
+    }
+    el.classList.remove('is-on', 'is-off');
+    // Force a reflow so re-adding the class restarts the animation.
+    void el.offsetWidth;
+    el.classList.add(kind === 'off' ? 'is-off' : 'is-on');
+    this.el.stage.appendChild(el);
+    clearTimeout(this._wipeTimer);
+    this._wipeTimer = setTimeout(() => el.remove(), 500);
+  }
+
   /* --------------------------------------------------------------- play */
 
   play(mod) {
@@ -345,6 +366,9 @@ export class ArcadeShell {
     this.el.overPause.hidden = true;
     this.el.overOver.hidden = true;
     $('hud-title').textContent = mod.meta.short || mod.meta.title;
+
+    this.crtWipe('on');
+    this.audio.sfx('powerup', { vol: 0.5 });
 
     // The stage must have its final size before the display measures it.
     requestAnimationFrame(() => {
@@ -363,6 +387,7 @@ export class ArcadeShell {
   }
 
   quitToHub() {
+    this.crtWipe('off');
     this.engine.unload();
     this.audio.sfx('back');
     this.el.overPause.hidden = true;
