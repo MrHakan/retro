@@ -352,6 +352,8 @@ export function create(api) {
 
   function die() {
     if (!alive) return;
+    api.hitStop(0.07);
+    api.flash(PAL.magenta, 0.35);
     alive = false;
     api.shakeScreen(14, 5);
     api.sfx('explosion');

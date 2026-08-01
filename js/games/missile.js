@@ -257,6 +257,8 @@ export function create(api) {
   }
 
   function damageStructure(x, y) {
+    api.hitStop(0.06);
+    api.flash(PAL.orange, 0.4);
     api.particles.burst(x, y, 14, {
       speed: 140, life: 0.7, size: 3, drag: 1.8, gravity: 120, glow: 10,
       color: [PAL.red, PAL.orange, PAL.yellow],

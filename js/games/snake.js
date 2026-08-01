@@ -120,6 +120,8 @@ export function create(api) {
 
   function die(reason) {
     if (!alive) return;
+    api.hitStop(0.08);
+    api.flash(PAL.red, 0.45);
     alive = false;
     api.shakeScreen(12, 5);
     api.sfx('explosion');

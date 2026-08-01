@@ -1085,6 +1085,9 @@ export function create(api) {
 
   function finish(kind, msg) {
     if (result) return;
+    // No hit-stop here: freezing a turn-based board reads as a stutter, not
+    // as impact. The flash alone marks the moment.
+    api.flash(kind === 'win' ? PAL.lime : PAL.red, 0.35);
     result = kind;
     phase = 'over';
     sel = -1;

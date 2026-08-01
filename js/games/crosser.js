@@ -546,6 +546,8 @@ export function create(api) {
 
   function die(reason, wet) {
     if (phase !== 'play' || over) return;
+    api.hitStop(0.07);
+    api.flash(PAL.red, 0.4);
     phase = 'dying';
     phaseT = 0;
     deathMsg = reason;

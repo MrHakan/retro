@@ -270,6 +270,11 @@ export function create(api) {
   }
 
   function crash(reason) {
+    // Several touchdown checks can fail in the same frame; only the first
+    // one is the crash.
+    if (phase !== 'fly') return;
+    api.hitStop(0.1);
+    api.flash(PAL.orange, 0.5);
     phase = 'crash';
     phaseT = 0;
     msg = reason;

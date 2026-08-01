@@ -350,6 +350,8 @@ export function create(api) {
   function caught(by) {
     if (over) return;
     over = true;
+    api.hitStop(0.1);
+    api.flash(PAL.red, 0.5);
     api.sfx('alert');
     api.shakeScreen(10, 4);
     api.vibrate(200);

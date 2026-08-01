@@ -350,7 +350,11 @@ export function create(api) {
       MISS: counts.MISS,
     };
     if (track) { track.stop(); track = null; }
-    if (failed) api.gameOver({ message: 'GROOVE FLATLINED', stats });
+    if (failed) {
+      api.hitStop(0.08);
+      api.flash(PAL.red, 0.45);
+      api.gameOver({ message: 'GROOVE FLATLINED', stats });
+    }
     else if (grade === 'F') api.gameOver({ message: 'SONG CLEARED — RANK F', stats });
     else api.win({ message: `SONG CLEARED — RANK ${grade}`, stats });
   }

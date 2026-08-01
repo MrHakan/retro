@@ -347,6 +347,7 @@ export function create(api) {
   }
 
   function hitCar(car) {
+    api.hitStop(0.05);
     hitFlash = 0.4;
     speed = Math.max(MAX_SPEED * 0.12, Math.min(speed, car.speed) * 0.4);
     position = increase(car.z, -PLAYER_Z * 1.15, trackLength);

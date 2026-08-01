@@ -286,6 +286,8 @@ export function create(api) {
 
   function endRun(reason) {
     if (dead) return;
+    api.hitStop(0.08);
+    api.flash(PAL.red, 0.4);
     dead = true;
     api.shakeScreen(16, 4);
     api.sfx('explosion');

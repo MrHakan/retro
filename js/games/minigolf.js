@@ -567,6 +567,8 @@ export function create(api) {
       aces++;
       name = 'HOLE IN ONE!';
       api.sfx('perfect');
+      api.hitStop(0.07);
+      api.flash(PAL.yellow, 0.4);
       api.shakeScreen(9, 4);
       api.vibrate(160);
       for (let i = 0; i < 4; i++) {

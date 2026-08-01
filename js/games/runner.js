@@ -407,6 +407,8 @@ export function create(api) {
 
   function die(cause) {
     if (!alive) return;
+    api.hitStop(0.08);
+    api.flash(PAL.red, 0.4);
     alive = false;
     api.shakeScreen(13, 5);
     api.sfx('explosion');

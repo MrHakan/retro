@@ -501,6 +501,8 @@ export function create(api) {
 
   function die(by) {
     if (!alive) return;
+    api.hitStop(0.09);
+    api.flash(PAL.red, 0.45);
     alive = false;
     api.shakeScreen(14, 4);
     api.sfx('gameover');

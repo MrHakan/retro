@@ -355,6 +355,8 @@ export function create(api) {
 
   function die(reason) {
     if (dead) return;
+    api.hitStop(0.08);
+    api.flash(PAL.red, 0.45);
     dead = true;
     deadT = 0;
     deathMsg = reason;

@@ -478,6 +478,8 @@ export function create(api) {
 
   function lose() {
     if (!alive) return;
+    api.hitStop(0.09);
+    api.flash(PAL.red, 0.45);
     alive = false;
     api.shakeScreen(16, 3);
     api.gameOver({
